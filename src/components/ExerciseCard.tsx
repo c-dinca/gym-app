@@ -1,0 +1,258 @@
+import React, { useState, useCallback } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import Animated, {
+    useAnimatedStyle,
+    withTiming,
+    useDerivedValue,
+    useSharedValue,
+    withSpring,
+    interpolateColor
+} from 'react-native-reanimated';
+import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
+import { theme } from '@theme/theme';
+import { Exercise } from '@typesProject/index';
+
+interface ExerciseCardProps {
+    exercise: Exercise;
+    onToggleSet: (setId: string) => void;
+    onStartRest: (seconds: number) => void;
+}
+
+const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
+
+const SetButton = React.memo(({
+    setId,
+    index,
+    isCompleted,
+    onToggle,
+    onStartRest,
+    restSeconds
+}: {
+    setId: string;
+    index: number;
+    isCompleted: boolean;
+    onToggle: (id: string, completed: boolean) => void;
+    onStartRest: (s: number) => void;
+    restSeconds: number;
+}) => {
+    const scale = useSharedValue(isCompleted ? 1 : 0.95);
+
+    React.useEffect(() => {
+        scale.value = withSpring(isCompleted ? 1 : 0.95, { damping: 15, stiffness: 250 });
+    }, [isCompleted, scale]);
+
+    const animatedStyle = useAnimatedStyle(() => {
+        return {
+            transform: [{ scale: scale.value }],
+            backgroundColor: withTiming(isCompleted ? theme.colors.primary : theme.colors.surfaceElevated, { duration: 200 }),
+        };
+    });
+
+    const animatedTextStyle = useAnimatedStyle(() => {
+        return {
+            color: isCompleted ? theme.colors.textPrimary : theme.colors.textTertiary,
+        };
+    });
+
+    const handlePress = useCallback(() => {
+        ReactNativeHapticFeedback.trigger(isCompleted ? 'impactLight' : 'impactMedium', {
+            enableVibrateFallback: true,
+            ignoreAndroidSystemSettings: false,
+        });
+
+        onToggle(setId, !isCompleted);
+
+        // Only trigger rest timer if we are completing a set (not undoing)
+        if (!isCompleted) {
+            onStartRest(restSeconds);
+        }
+    }, [setId, isCompleted, onToggle, onStartRest, restSeconds]);
+
+    return (
+        <AnimatedTouchableOpacity
+            activeOpacity={0.8}
+            onPress={handlePress}
+            style={[styles.setButton, animatedStyle]}
+        >
+            <Animated.Text style={[styles.setButtonText, animatedTextStyle]}>
+                {index + 1}
+            </Animated.Text>
+        </AnimatedTouchableOpacity>
+    );
+});
+
+export const ExerciseCard: React.FC<ExerciseCardProps> = React.memo(({ exercise, onToggleSet, onStartRest }) => {
+    const [expanded, setExpanded] = useState(false);
+
+    const toggleExpand = useCallback(() => {
+        ReactNativeHapticFeedback.trigger('impactLight', {
+            enableVibrateFallback: true,
+            ignoreAndroidSystemSettings: false,
+        });
+        setExpanded(prev => !prev);
+    }, []);
+
+    const handleToggle = useCallback((id: string) => {
+        onToggleSet(id);
+    }, [onToggleSet]);
+
+    const handleRest = useCallback((secs: number) => {
+        onStartRest(secs);
+    }, [onStartRest]);
+
+    const allSetsCompleted = exercise.sets.every(set => set.completed);
+
+    return (
+        <View style={styles.card}>
+            <TouchableOpacity activeOpacity={0.9} onPress={toggleExpand}>
+                {/* Row 1: Exercise Name */}
+                <View style={styles.headerRow}>
+                    <Text style={[styles.exerciseName, allSetsCompleted && styles.exerciseNameCompleted]}>
+                        {exercise.name}
+                    </Text>
+                </View>
+
+                {/* Row 2: Badges */}
+                <View style={styles.badgesRow}>
+                    <View style={[styles.badge, styles.badgePrimary]}>
+                        <Text style={[styles.badgeText, styles.badgeTextPrimary]}>{exercise.sets.length} SETURI</Text>
+                    </View>
+                    {exercise.rpe && (
+                        <View style={styles.badge}>
+                            <Text style={styles.badgeText}>{exercise.rpe.toUpperCase()}</Text>
+                        </View>
+                    )}
+                    {exercise.rir && (
+                        <View style={styles.badge}>
+                            <Text style={styles.badgeText}>{exercise.rir.toUpperCase()}</Text>
+                        </View>
+                    )}
+                    <View style={styles.badge}>
+                        <Text style={styles.badgeText}>{exercise.restTimeDisplay}</Text>
+                    </View>
+                    <View style={[styles.badge, { backgroundColor: 'transparent', borderWidth: 0, paddingHorizontal: 0 }]}>
+                        <Text style={[styles.badgeText, { color: theme.colors.textTertiary }]}>{exercise.targetMuscle.toUpperCase()}</Text>
+                    </View>
+                </View>
+
+                {/* Expandable Content (Form & Alternative) */}
+                {expanded && (
+                    <Animated.View style={styles.expandedContent}>
+                        <View style={styles.expandedSection}>
+                            <Text style={styles.expandedLabel}>ALTERNATIVA</Text>
+                            <Text style={styles.expandedText}>{exercise.alternative}</Text>
+                        </View>
+                        <View style={styles.expandedSection}>
+                            <Text style={styles.expandedLabel}>INDICAȚII FORMĂ</Text>
+                            <Text style={styles.expandedText}>{exercise.formInstruction}</Text>
+                        </View>
+                    </Animated.View>
+                )}
+
+                {/* Row 3: Checkboxes */}
+                <View style={styles.setsRow}>
+                    {exercise.sets.map((set, index) => (
+                        <SetButton
+                            key={set.id}
+                            setId={set.id}
+                            index={index}
+                            isCompleted={set.completed}
+                            onToggle={handleToggle}
+                            onStartRest={handleRest}
+                            restSeconds={exercise.restTimeSeconds}
+                        />
+                    ))}
+                </View>
+            </TouchableOpacity>
+        </View>
+    );
+});
+
+const styles = StyleSheet.create({
+    card: {
+        backgroundColor: theme.colors.surface,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        borderRadius: theme.borderRadius.lg,
+        padding: theme.spacing.lg,
+        marginBottom: theme.spacing.md,
+    },
+    headerRow: {
+        marginBottom: theme.spacing.sm,
+    },
+    exerciseName: {
+        color: theme.colors.textPrimary,
+        ...theme.typography.subheading,
+        fontSize: 16,
+    },
+    exerciseNameCompleted: {
+        color: theme.colors.success,
+    },
+    badgesRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: theme.spacing.xs,
+        marginBottom: theme.spacing.lg,
+    },
+    badge: {
+        backgroundColor: theme.colors.surfaceElevated,
+        paddingHorizontal: theme.spacing.sm,
+        paddingVertical: 4,
+        borderRadius: theme.borderRadius.sm,
+        borderWidth: 1,
+        borderColor: theme.colors.borderActive,
+    },
+    badgePrimary: {
+        backgroundColor: theme.colors.primaryDim,
+        borderColor: theme.colors.primaryGlow,
+    },
+    badgeText: {
+        color: theme.colors.textSecondary,
+        ...theme.typography.caption,
+        fontSize: 10,
+        letterSpacing: 1,
+    },
+    badgeTextPrimary: {
+        color: theme.colors.primary,
+    },
+    setsRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: theme.spacing.md,
+    },
+    setButton: {
+        width: 48,
+        height: 48,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderRadius: theme.borderRadius.md,
+        borderWidth: 1,
+        borderColor: theme.colors.borderActive,
+    },
+    setButtonText: {
+        ...theme.typography.heading,
+        fontSize: 18,
+    },
+    expandedContent: {
+        marginBottom: theme.spacing.lg,
+        paddingBottom: theme.spacing.md,
+        borderBottomWidth: 1,
+        borderBottomColor: theme.colors.border,
+    },
+    expandedSection: {
+        marginBottom: theme.spacing.sm,
+    },
+    expandedLabel: {
+        color: theme.colors.textTertiary,
+        ...theme.typography.caption,
+        fontSize: 10,
+        letterSpacing: 1.5,
+        marginBottom: 2,
+    },
+    expandedText: {
+        color: theme.colors.textSecondary,
+        ...theme.typography.body,
+        fontSize: 13,
+        lineHeight: 18,
+    }
+});
