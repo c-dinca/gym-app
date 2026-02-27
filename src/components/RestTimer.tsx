@@ -2,9 +2,9 @@ import React, { useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import Animated, {
     useAnimatedStyle,
-    withSpring,
-    useSharedValue,
     withTiming,
+    useSharedValue,
+    withSpring,
     Easing
 } from 'react-native-reanimated';
 import { X } from 'lucide-react-native';
@@ -20,11 +20,13 @@ export const RestTimer = React.memo(() => {
 
     useEffect(() => {
         let interval: ReturnType<typeof setInterval>;
+
         if (isActive) {
             interval = setInterval(() => {
                 tick();
             }, 1000);
         }
+
         return () => {
             if (interval) clearInterval(interval);
         };
@@ -48,25 +50,36 @@ export const RestTimer = React.memo(() => {
         stopTimer();
     }, [stopTimer]);
 
-    const animatedStyle = useAnimatedStyle(() => ({
-        transform: [{ translateY: translateY.value }],
-        opacity: opacity.value,
-    }));
-
     const formatTime = (seconds: number) => {
         const m = Math.floor(seconds / 60);
         const s = seconds % 60;
         return `${m}:${s.toString().padStart(2, '0')}`;
     };
 
+    const isWarning = timeRemaining <= 10 && timeRemaining > 0;
+
+    const animatedPillStyle = useAnimatedStyle(() => {
+        return {
+            backgroundColor: withTiming(isWarning ? '#FF3B30' : theme.colors.primary, { duration: 300 }),
+            shadowColor: withTiming(isWarning ? '#FF3B30' : theme.colors.primary, { duration: 300 }),
+        };
+    });
+
+    const animatedStyle = useAnimatedStyle(() => ({
+        transform: [{ translateY: translateY.value }],
+        opacity: opacity.value,
+    }));
+
     if (!isActive && translateY.value === 150) return null;
 
     return (
         <Animated.View style={[styles.container, animatedStyle]}>
-            <View style={styles.pill}>
+            <Animated.View style={[styles.pill, animatedPillStyle]}>
                 <View style={styles.content}>
                     <Text style={styles.label}>Pauză </Text>
-                    <Text style={styles.timeText}>{formatTime(timeRemaining)}</Text>
+                    <Text style={styles.timeText}>
+                        {formatTime(timeRemaining)}
+                    </Text>
                 </View>
                 <TouchableOpacity
                     hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
@@ -75,7 +88,7 @@ export const RestTimer = React.memo(() => {
                 >
                     <X color={theme.colors.textPrimary} size={18} strokeWidth={2.5} />
                 </TouchableOpacity>
-            </View>
+            </Animated.View>
         </Animated.View>
     );
 });

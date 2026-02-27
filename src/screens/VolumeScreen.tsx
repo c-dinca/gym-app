@@ -1,5 +1,6 @@
 import React, { useMemo, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, ListRenderItemInfo } from 'react-native';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useWorkoutStore } from '@hooks/useWorkoutStore';
 import { VolumeBar } from '@components/VolumeBar';
@@ -80,22 +81,24 @@ export const VolumeScreen = () => {
     const keyExtractor = useCallback((item: VolumeData) => item.muscleGroup, []);
 
     return (
-        <SafeAreaView style={styles.container} edges={['top']}>
-            <View style={styles.header}>
-                <Text style={styles.title}>VOLUM SĂPTĂMÂNAL</Text>
-                <Text style={styles.subtitle}>
-                    Seturi directe de lucru/săptămână.{'\n'}Optim: 14-20 grupe mari, 8-14 grupe mici.
-                </Text>
-            </View>
+        <Animated.View style={styles.container} entering={FadeIn.duration(150)}>
+            <SafeAreaView style={styles.container} edges={['top']}>
+                <View style={styles.header}>
+                    <Text style={styles.title}>VOLUM SĂPTĂMÂNAL</Text>
+                    <Text style={styles.subtitle}>
+                        Seturi directe de lucru/săptămână.{'\n'}Optim: 14-20 grupe mari, 8-14 grupe mici.
+                    </Text>
+                </View>
 
-            <FlatList
-                data={calculatedVolume}
-                renderItem={renderItem}
-                keyExtractor={keyExtractor}
-                contentContainerStyle={styles.listContent}
-                showsVerticalScrollIndicator={false}
-            />
-        </SafeAreaView>
+                <FlatList
+                    data={calculatedVolume}
+                    renderItem={renderItem}
+                    keyExtractor={keyExtractor}
+                    contentContainerStyle={styles.listContent}
+                    showsVerticalScrollIndicator={false}
+                />
+            </SafeAreaView>
+        </Animated.View>
     );
 };
 

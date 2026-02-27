@@ -1,5 +1,7 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useEffect } from 'react';
 import { View, StyleSheet, Text, FlatList, ListRenderItemInfo } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming, FadeIn } from 'react-native-reanimated';
+import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useWorkoutStore } from '@hooks/useWorkoutStore';
 import { DaySelector } from '@components/DaySelector';
@@ -57,66 +59,86 @@ export const WorkoutScreen = () => {
         return { current, total, progress };
     }, [currentDay, currentDayIndex, getCompletedCount, getTotalSets, checkedSets]);
 
+    const animatedProgressValue = useSharedValue(0);
+
+    useEffect(() => {
+        if (stats.progress === 100 && animatedProgressValue.value < 100 && stats.total > 0) {
+            ReactNativeHapticFeedback.trigger('notificationSuccess', {
+                enableVibrateFallback: true,
+                ignoreAndroidSystemSettings: false,
+            });
+        }
+        animatedProgressValue.value = withTiming(stats.progress, { duration: 400 });
+    }, [stats.progress, stats.total, animatedProgressValue]);
+
+    const progressBarStyle = useAnimatedStyle(() => {
+        return {
+            width: `${animatedProgressValue.value}%`,
+        };
+    });
+
     return (
-        <SafeAreaView style={styles.container} edges={['top']}>
-            <View style={styles.globalHeader}>
-                <View>
-                    <Text style={styles.topCaption}>PROGRAM ANTRENAMENT</Text>
-                    <Text style={styles.topHeading}>Masă & Forță</Text>
-                </View>
-                {/* Empty right area intentionally left minimal */}
-            </View>
-
-            <DaySelector
-                days={workoutDays}
-                selectedDayId={currentDayId}
-                onSelectDay={handleSelectDay}
-            />
-
-            {currentDay ? (
-                <>
-                    <View style={styles.heroCard}>
-                        <View style={styles.heroHeaderRow}>
-                            <View style={styles.heroLeft}>
-                                <Text style={styles.heroTitle}>{currentDay.title}</Text>
-                                <Text style={styles.heroSubtitle}>
-                                    {currentDay.dayOfWeek} · {currentDay.subtitle}
-                                </Text>
-                            </View>
-                            <View style={styles.heroRight}>
-                                <Text style={styles.heroStatValue}>
-                                    <Text style={{ color: theme.colors.textPrimary }}>{stats.current}</Text>
-                                    /{stats.total}
-                                </Text>
-                                <Text style={styles.heroStatLabel}>seturi</Text>
-                            </View>
-                        </View>
-                        <View style={styles.progressBarBg}>
-                            <View style={[styles.progressBarFill, { width: `${stats.progress}%` }]} />
-                        </View>
+        <Animated.View style={styles.container} entering={FadeIn.duration(150)}>
+            <SafeAreaView style={styles.container} edges={['top']}>
+                <View style={styles.globalHeader}>
+                    <View>
+                        <Text style={styles.topCaption}>PROGRAM ANTRENAMENT</Text>
+                        <Text style={styles.topHeading}>Masă & Forță</Text>
                     </View>
-
-                    {currentDay.warmup && currentDay.warmup.length > 0 && (
-                        <WarmupCard warmups={currentDay.warmup} />
-                    )}
-
-                    <FlatList
-                        data={currentDay.exercises}
-                        keyExtractor={keyExtractor}
-                        renderItem={renderExercise}
-                        getItemLayout={getItemLayout}
-                        contentContainerStyle={styles.listContent}
-                        ListEmptyComponent={<Text style={styles.emptyText}>Lista este goală. Exercițiile vor fi afișate aici.</Text>}
-                    />
-                </>
-            ) : (
-                <View style={styles.emptyContainer}>
-                    <Text style={styles.emptyText}>Selectează o zi pentru a vedea antrenamentul.</Text>
+                    {/* Empty right area intentionally left minimal */}
                 </View>
-            )}
 
-            <RestTimer />
-        </SafeAreaView>
+                <DaySelector
+                    days={workoutDays}
+                    selectedDayId={currentDayId}
+                    onSelectDay={handleSelectDay}
+                />
+
+                {currentDay ? (
+                    <>
+                        <View style={styles.heroCard}>
+                            <View style={styles.heroHeaderRow}>
+                                <View style={styles.heroLeft}>
+                                    <Text style={styles.heroTitle}>{currentDay.title}</Text>
+                                    <Text style={styles.heroSubtitle}>
+                                        {currentDay.dayOfWeek} · {currentDay.subtitle}
+                                    </Text>
+                                </View>
+                                <View style={styles.heroRight}>
+                                    <Text style={styles.heroStatValue}>
+                                        <Text style={{ color: theme.colors.textPrimary }}>{stats.current}</Text>
+                                        /{stats.total}
+                                    </Text>
+                                    <Text style={styles.heroStatLabel}>seturi</Text>
+                                </View>
+                            </View>
+                            <View style={styles.progressBarBg}>
+                                <Animated.View style={[styles.progressBarFill, progressBarStyle]} />
+                            </View>
+                        </View>
+
+                        {currentDay.warmup && currentDay.warmup.length > 0 && (
+                            <WarmupCard warmups={currentDay.warmup} />
+                        )}
+
+                        <FlatList
+                            data={currentDay.exercises}
+                            keyExtractor={keyExtractor}
+                            renderItem={renderExercise}
+                            getItemLayout={getItemLayout}
+                            contentContainerStyle={styles.listContent}
+                            ListEmptyComponent={<Text style={styles.emptyText}>Lista este goală. Exercițiile vor fi afișate aici.</Text>}
+                        />
+                    </>
+                ) : (
+                    <View style={styles.emptyContainer}>
+                        <Text style={styles.emptyText}>Selectează o zi pentru a vedea antrenamentul.</Text>
+                    </View>
+                )}
+
+                <RestTimer />
+            </SafeAreaView>
+        </Animated.View>
     );
 };
 

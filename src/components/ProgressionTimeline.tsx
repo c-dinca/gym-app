@@ -5,7 +5,9 @@ import Animated, {
     useSharedValue,
     withTiming,
     withDelay,
+    withSpring,
     Easing,
+    FadeInLeft
 } from 'react-native-reanimated';
 import { theme } from '@theme/theme';
 import { ProgressionData } from '@typesProject/index';
@@ -15,32 +17,43 @@ interface ProgressionTimelineProps {
 }
 
 const TimelineItem = React.memo(({ item, index, isLast }: { item: ProgressionData, index: number, isLast: boolean }) => {
-    const opacity = useSharedValue(0);
-    const translateX = useSharedValue(-15);
+    const dotScale = useSharedValue(0);
+    const lineHeight = useSharedValue(0);
 
     useEffect(() => {
         const delay = index * 100;
-        opacity.value = withDelay(delay, withTiming(1, { duration: 400 }));
-        translateX.value = withDelay(delay, withTiming(0, { duration: 400, easing: Easing.out(Easing.back(1.5)) }));
-    }, [index, opacity, translateX]);
 
-    const animatedStyle = useAnimatedStyle(() => {
-        return {
-            opacity: opacity.value,
-            transform: [{ translateX: translateX.value }],
-        };
-    });
+        // Dot pop in
+        dotScale.value = withDelay(delay, withSpring(1, { damping: 12, stiffness: 180 }));
+
+        // Line growth
+        lineHeight.value = withDelay(delay + 100, withTiming(1, { duration: 800, easing: Easing.inOut(Easing.ease) }));
+    }, [index, dotScale, lineHeight]);
+
+    const dotStyle = useAnimatedStyle(() => ({
+        transform: [{ scale: dotScale.value }]
+    }));
+
+    const lineStyle = useAnimatedStyle(() => ({
+        transform: [
+            { scaleY: lineHeight.value },
+            { translateY: (lineHeight.value - 1) * 20 } // offset anchor point simulation if needed, or simply scale
+        ]
+    }));
 
     return (
         <View style={styles.timelineRow}>
             {/* Left Column: Line & Dot */}
             <View style={styles.timelineIndicator}>
-                <View style={[styles.dot, item.isActive && styles.dotActive]} />
-                {!isLast && <View style={styles.line} />}
+                <Animated.View style={[styles.dot, item.isActive && styles.dotActive, dotStyle]} />
+                {!isLast && <Animated.View style={[styles.line, { transformOrigin: 'top' }, lineStyle]} />}
             </View>
 
             {/* Right Column: Card */}
-            <Animated.View style={[styles.card, animatedStyle, item.isActive && styles.cardActive]}>
+            <Animated.View
+                entering={FadeInLeft.delay(index * 100).duration(400)}
+                style={[styles.card, item.isActive && styles.cardActive]}
+            >
                 <View style={styles.cardHeader}>
                     <Text style={styles.phaseLabel}>{item.mesocyclePhase}</Text>
                     {/* Keep week simple in this layout since we baked it into mesocyclePhase text */}

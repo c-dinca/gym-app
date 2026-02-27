@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import Animated, { useAnimatedStyle, withSpring, useSharedValue, withTiming } from 'react-native-reanimated';
 import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
@@ -13,17 +13,22 @@ interface DaySelectorProps {
 
 const DayPill = React.memo(({ day, isSelected, onPress }: { day: WorkoutDay; isSelected: boolean; onPress: (id: string) => void }) => {
     const scale = useSharedValue(isSelected ? 1.05 : 1);
-    const opacity = useSharedValue(isSelected ? 1 : 0);
+    const bgOpacity = useSharedValue(isSelected ? 1 : 0);
+    const bgScale = useSharedValue(isSelected ? 1 : 0.8);
 
     React.useEffect(() => {
         scale.value = withSpring(isSelected ? 1.05 : 1, { damping: 15, stiffness: 200 });
-        opacity.value = withTiming(isSelected ? 1 : 0.5, { duration: 200 });
-    }, [isSelected, scale, opacity]);
+        bgOpacity.value = withTiming(isSelected ? 1 : 0, { duration: 200 });
+        bgScale.value = withSpring(isSelected ? 1 : 0.8, { damping: 15, stiffness: 200 });
+    }, [isSelected, scale, bgOpacity, bgScale]);
 
-    const animatedStyle = useAnimatedStyle(() => ({
+    const animatedTextStyle = useAnimatedStyle(() => ({
         transform: [{ scale: scale.value }],
-        opacity: opacity.value,
-        backgroundColor: isSelected ? theme.colors.primary : 'transparent',
+    }));
+
+    const animatedBgStyle = useAnimatedStyle(() => ({
+        opacity: bgOpacity.value,
+        transform: [{ scale: bgScale.value }]
     }));
 
     const handlePress = useCallback(() => {
@@ -37,11 +42,12 @@ const DayPill = React.memo(({ day, isSelected, onPress }: { day: WorkoutDay; isS
     return (
         <View style={styles.pillWrapper}>
             <TouchableOpacity activeOpacity={0.8} onPress={handlePress}>
-                <Animated.View style={[styles.pill, animatedStyle]}>
-                    <Text style={[styles.text, isSelected && styles.textSelected]}>
+                <View style={styles.pill}>
+                    <Animated.View style={[styles.activePillBg, animatedBgStyle]} />
+                    <Animated.Text style={[styles.text, isSelected && styles.textSelected, animatedTextStyle]}>
                         {day.shortName}
-                    </Text>
-                </Animated.View>
+                    </Animated.Text>
+                </View>
             </TouchableOpacity>
             <Text style={[styles.subtitleLabel, isSelected && { color: theme.colors.textAccent }]}>
                 {day.subtitle?.toUpperCase()}
@@ -86,14 +92,18 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: theme.spacing.xs,
     },
+    activePillBg: {
+        ...StyleSheet.absoluteFillObject,
+        borderRadius: theme.borderRadius.pill,
+        backgroundColor: theme.colors.primary,
+        zIndex: -1,
+    },
     pill: {
         width: 48,
         height: 48,
         borderRadius: theme.borderRadius.pill,
         justifyContent: 'center',
         alignItems: 'center',
-        borderWidth: 1,
-        borderColor: 'transparent', // Can change to active border logic if needed
     },
     text: {
         color: theme.colors.textTertiary,
@@ -105,7 +115,7 @@ const styles = StyleSheet.create({
     },
     subtitleLabel: {
         color: theme.colors.textTertiary,
-        fontSize: 8, // Specific constraint
+        fontSize: 8,
         fontFamily: theme.typography.caption.fontFamily,
         fontWeight: theme.typography.caption.fontWeight,
         letterSpacing: 0.5,

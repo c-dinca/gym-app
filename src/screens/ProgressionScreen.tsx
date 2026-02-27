@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ProgressionTimeline } from '@components/ProgressionTimeline';
 import { progressionData } from '@data/workoutData';
@@ -17,43 +18,45 @@ const TIPS = [
 
 export const ProgressionScreen = () => {
     return (
-        <SafeAreaView style={styles.container} edges={['top']}>
-            <ScrollView
-                contentContainerStyle={styles.scrollContent}
-                showsVerticalScrollIndicator={false}
-            >
-                {/* Header Section */}
-                <View style={styles.header}>
-                    <Text style={styles.title}>PROGRESIE</Text>
-                    <Text style={styles.subtitle}>
-                        Plan mezociclu 9 săptămâni. Obiectiv: Hipertrofie & Forță.
-                    </Text>
-                </View>
-
-                {/* Timeline Section */}
-                <ProgressionTimeline data={progressionData} />
-
-                {/* Tips Section */}
-                <View style={styles.tipsContainer}>
-                    <Text style={styles.tipsHeader}>SFATURI RAPIDE</Text>
-
-                    <View style={styles.tipsCard}>
-                        {TIPS.map((tip, index) => (
-                            <View
-                                key={index}
-                                style={[
-                                    styles.tipRow,
-                                    index === TIPS.length - 1 && styles.tipRowLast
-                                ]}
-                            >
-                                <Text style={styles.tipBullet}>›</Text>
-                                <Text style={styles.tipText}>{tip}</Text>
-                            </View>
-                        ))}
+        <Animated.View style={styles.container} entering={FadeIn.duration(150)}>
+            <SafeAreaView style={styles.container} edges={['top']}>
+                <ScrollView
+                    contentContainerStyle={styles.scrollContent}
+                    showsVerticalScrollIndicator={false}
+                >
+                    {/* Header Section */}
+                    <View style={styles.header}>
+                        <Text style={styles.title}>PROGRESIE</Text>
+                        <Text style={styles.subtitle}>
+                            Plan mezociclu 9 săptămâni. Obiectiv: Hipertrofie & Forță.
+                        </Text>
                     </View>
-                </View>
-            </ScrollView>
-        </SafeAreaView>
+
+                    {/* Timeline Section */}
+                    <ProgressionTimeline data={progressionData} />
+
+                    {/* Tips Section */}
+                    <View style={styles.tipsContainer}>
+                        <Text style={styles.tipsHeader}>SFATURI RAPIDE</Text>
+
+                        <View style={styles.tipsCard}>
+                            {TIPS.map((tip, index) => (
+                                <View
+                                    key={index}
+                                    style={[
+                                        styles.tipRow,
+                                        index === TIPS.length - 1 && styles.tipRowLast
+                                    ]}
+                                >
+                                    <Text style={styles.tipBullet}>›</Text>
+                                    <Text style={styles.tipText}>{tip}</Text>
+                                </View>
+                            ))}
+                        </View>
+                    </View>
+                </ScrollView>
+            </SafeAreaView>
+        </Animated.View>
     );
 };
 

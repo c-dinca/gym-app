@@ -3,7 +3,7 @@ import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { TabNavigator } from '@navigation/TabNavigator';
 import { theme } from '@theme/theme';
-import { StatusBar } from 'react-native';
+import { StatusBar, View } from 'react-native';
 import { useWorkoutStore } from '@hooks/useWorkoutStore';
 
 const NavigationTheme = {
@@ -25,7 +25,7 @@ export const App = () => {
         init();
     }, [init]);
 
-    if (isLoading) return null; // Avoid rendering until storage is loaded
+    if (isLoading) return <View style={{ flex: 1, backgroundColor: theme.colors.background }} />; // Avoid returning null
 
     return (
         <SafeAreaProvider>

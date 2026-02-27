@@ -4,9 +4,13 @@ import Animated, {
     useAnimatedStyle,
     withTiming,
     useSharedValue,
-    withSpring
+    withSpring,
+    FadeIn,
+    FadeOut,
+    LinearTransition
 } from 'react-native-reanimated';
 import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
+import { ChevronRight } from 'lucide-react-native';
 import { theme } from '@theme/theme';
 import { Exercise } from '@typesProject/index';
 import { useWorkoutStore } from '@hooks/useWorkoutStore';
@@ -37,7 +41,7 @@ const SetButton = React.memo(({
     const scale = useSharedValue(isCompleted ? 1 : 0.95);
 
     React.useEffect(() => {
-        scale.value = withSpring(isCompleted ? 1 : 0.95, { damping: 15, stiffness: 250 });
+        scale.value = withSpring(isCompleted ? 1 : 0.95, { damping: 15, stiffness: 150 });
     }, [isCompleted, scale]);
 
     const animatedStyle = useAnimatedStyle(() => {
@@ -84,14 +88,6 @@ export const ExerciseCard: React.FC<ExerciseCardProps> = React.memo(({ dayIndex,
     const [expanded, setExpanded] = useState(false);
     const checkedSets = useWorkoutStore(state => state.checkedSets);
 
-    const toggleExpand = useCallback(() => {
-        ReactNativeHapticFeedback.trigger('impactLight', {
-            enableVibrateFallback: true,
-            ignoreAndroidSystemSettings: false,
-        });
-        setExpanded(prev => !prev);
-    }, []);
-
     const handleToggle = useCallback((idx: number) => {
         onToggleSet(idx);
     }, [onToggleSet]);
@@ -102,14 +98,36 @@ export const ExerciseCard: React.FC<ExerciseCardProps> = React.memo(({ dayIndex,
 
     const allSetsCompleted = exercise.sets.length > 0 && exercise.sets.every((_, index) => !!checkedSets[`${dayIndex}-${exerciseIndex}-${index}`]);
 
+    const rotation = useSharedValue(0);
+
+    const toggleExpand = useCallback(() => {
+        ReactNativeHapticFeedback.trigger('impactLight', {
+            enableVibrateFallback: true,
+            ignoreAndroidSystemSettings: false,
+        });
+        setExpanded(prev => {
+            rotation.value = withSpring(prev ? 0 : 90, { damping: 15, stiffness: 150 });
+            return !prev;
+        });
+    }, [rotation]);
+
+    const chevronStyle = useAnimatedStyle(() => {
+        return {
+            transform: [{ rotate: `${rotation.value}deg` }]
+        };
+    });
+
     return (
-        <View style={styles.card}>
+        <Animated.View style={styles.card} layout={LinearTransition.duration(200)}>
             <TouchableOpacity activeOpacity={0.9} onPress={toggleExpand}>
-                {/* Row 1: Exercise Name */}
+                {/* Row 1: Exercise Name & Chevron */}
                 <View style={styles.headerRow}>
                     <Text style={[styles.exerciseName, allSetsCompleted && styles.exerciseNameCompleted]}>
                         {exercise.name}
                     </Text>
+                    <Animated.View style={chevronStyle}>
+                        <ChevronRight color={theme.colors.textSecondary} size={20} />
+                    </Animated.View>
                 </View>
 
                 {/* Row 2: Badges */}
@@ -137,7 +155,11 @@ export const ExerciseCard: React.FC<ExerciseCardProps> = React.memo(({ dayIndex,
 
                 {/* Expandable Content (Form & Alternative) */}
                 {expanded && (
-                    <Animated.View style={styles.expandedContent}>
+                    <Animated.View
+                        style={styles.expandedContent}
+                        entering={FadeIn.delay(100).duration(200)}
+                        exiting={FadeOut.duration(150)}
+                    >
                         <View style={styles.expandedSection}>
                             <Text style={styles.expandedLabel}>ALTERNATIVA</Text>
                             <Text style={styles.expandedText}>{exercise.alternative}</Text>
@@ -166,7 +188,7 @@ export const ExerciseCard: React.FC<ExerciseCardProps> = React.memo(({ dayIndex,
                     })}
                 </View>
             </TouchableOpacity>
-        </View>
+        </Animated.View>
     );
 });
 
@@ -178,8 +200,12 @@ const styles = StyleSheet.create({
         borderRadius: theme.borderRadius.lg,
         padding: theme.spacing.lg,
         marginBottom: theme.spacing.md,
+        overflow: 'hidden',
     },
     headerRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
         marginBottom: theme.spacing.sm,
     },
     exerciseName: {

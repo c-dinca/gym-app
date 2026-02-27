@@ -1,5 +1,6 @@
-import React, { useEffect } from 'react';
+import React, { useCallback } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import Animated, {
     useAnimatedStyle,
     useSharedValue,
@@ -28,15 +29,18 @@ export const VolumeBar: React.FC<VolumeBarProps> = React.memo(({
     const clampedCurrent = Math.min(currentSets, safeTarget); // clamp for visual
     const percentage = (clampedCurrent / safeTarget) * 100;
 
-    useEffect(() => {
-        progressWidth.value = withDelay(
-            index * 80, // Stagger animation
-            withTiming(percentage, {
-                duration: 600,
-                easing: Easing.out(Easing.cubic),
-            })
-        );
-    }, [percentage, index, progressWidth]);
+    useFocusEffect(
+        useCallback(() => {
+            progressWidth.value = 0; // reset
+            progressWidth.value = withDelay(
+                index * 80, // Stagger animation
+                withTiming(percentage, {
+                    duration: 600,
+                    easing: Easing.bezier(0.25, 0.1, 0.25, 1),
+                })
+            );
+        }, [percentage, index, progressWidth])
+    );
 
     const animatedBarStyle = useAnimatedStyle(() => {
         return {
