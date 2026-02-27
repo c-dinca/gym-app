@@ -3,35 +3,34 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import Animated, {
     useAnimatedStyle,
     withTiming,
-    useDerivedValue,
     useSharedValue,
-    withSpring,
-    interpolateColor
+    withSpring
 } from 'react-native-reanimated';
 import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
 import { theme } from '@theme/theme';
 import { Exercise } from '@typesProject/index';
+import { useWorkoutStore } from '@hooks/useWorkoutStore';
 
 interface ExerciseCardProps {
+    dayIndex: number;
+    exerciseIndex: number;
     exercise: Exercise;
-    onToggleSet: (setId: string) => void;
+    onToggleSet: (setIndex: number) => void;
     onStartRest: (seconds: number) => void;
 }
 
 const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
 
 const SetButton = React.memo(({
-    setId,
     index,
     isCompleted,
     onToggle,
     onStartRest,
     restSeconds
 }: {
-    setId: string;
     index: number;
     isCompleted: boolean;
-    onToggle: (id: string, completed: boolean) => void;
+    onToggle: (index: number) => void;
     onStartRest: (s: number) => void;
     restSeconds: number;
 }) => {
@@ -60,13 +59,13 @@ const SetButton = React.memo(({
             ignoreAndroidSystemSettings: false,
         });
 
-        onToggle(setId, !isCompleted);
+        onToggle(index);
 
         // Only trigger rest timer if we are completing a set (not undoing)
         if (!isCompleted) {
             onStartRest(restSeconds);
         }
-    }, [setId, isCompleted, onToggle, onStartRest, restSeconds]);
+    }, [index, isCompleted, onToggle, onStartRest, restSeconds]);
 
     return (
         <AnimatedTouchableOpacity
@@ -81,8 +80,9 @@ const SetButton = React.memo(({
     );
 });
 
-export const ExerciseCard: React.FC<ExerciseCardProps> = React.memo(({ exercise, onToggleSet, onStartRest }) => {
+export const ExerciseCard: React.FC<ExerciseCardProps> = React.memo(({ dayIndex, exerciseIndex, exercise, onToggleSet, onStartRest }) => {
     const [expanded, setExpanded] = useState(false);
+    const checkedSets = useWorkoutStore(state => state.checkedSets);
 
     const toggleExpand = useCallback(() => {
         ReactNativeHapticFeedback.trigger('impactLight', {
@@ -92,15 +92,15 @@ export const ExerciseCard: React.FC<ExerciseCardProps> = React.memo(({ exercise,
         setExpanded(prev => !prev);
     }, []);
 
-    const handleToggle = useCallback((id: string) => {
-        onToggleSet(id);
+    const handleToggle = useCallback((idx: number) => {
+        onToggleSet(idx);
     }, [onToggleSet]);
 
     const handleRest = useCallback((secs: number) => {
         onStartRest(secs);
     }, [onStartRest]);
 
-    const allSetsCompleted = exercise.sets.every(set => set.completed);
+    const allSetsCompleted = exercise.sets.length > 0 && exercise.sets.every((_, index) => !!checkedSets[`${dayIndex}-${exerciseIndex}-${index}`]);
 
     return (
         <View style={styles.card}>
@@ -151,17 +151,19 @@ export const ExerciseCard: React.FC<ExerciseCardProps> = React.memo(({ exercise,
 
                 {/* Row 3: Checkboxes */}
                 <View style={styles.setsRow}>
-                    {exercise.sets.map((set, index) => (
-                        <SetButton
-                            key={set.id}
-                            setId={set.id}
-                            index={index}
-                            isCompleted={set.completed}
-                            onToggle={handleToggle}
-                            onStartRest={handleRest}
-                            restSeconds={exercise.restTimeSeconds}
-                        />
-                    ))}
+                    {exercise.sets.map((set, index) => {
+                        const isCompleted = !!checkedSets[`${dayIndex}-${exerciseIndex}-${index}`];
+                        return (
+                            <SetButton
+                                key={set.id}
+                                index={index}
+                                isCompleted={isCompleted}
+                                onToggle={handleToggle}
+                                onStartRest={handleRest}
+                                restSeconds={exercise.restTimeSeconds}
+                            />
+                        );
+                    })}
                 </View>
             </TouchableOpacity>
         </View>

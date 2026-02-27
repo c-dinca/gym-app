@@ -5,11 +5,12 @@ import { useWorkoutStore } from '@hooks/useWorkoutStore';
 import { VolumeBar } from '@components/VolumeBar';
 import { theme } from '@theme/theme';
 import { VolumeData } from '@typesProject/index';
+import { workoutDays } from '@data/workoutData';
 
 export const VolumeScreen = () => {
-    const { workouts } = useWorkoutStore();
+    const checkedSets = useWorkoutStore(state => state.checkedSets);
 
-    // Dynamically calculate current sets based on what's marked as complete in workouts
+    // Dynamically calculate current sets based on checkedSets hashmap
     const calculatedVolume = useMemo(() => {
         // Start by mapping over the target volume data to create our base
         // But for this mockup, we'll just import the target data and modify currentSets
@@ -28,40 +29,44 @@ export const VolumeScreen = () => {
             { muscleGroup: 'Abdomen', currentSets: 0, targetSets: 6 },
         ];
 
-        // This is a naive count based exactly on targetMuscle string match
-        // In a real app we might normalize keys, but this connects directly to workoutData strings
-        workouts.forEach(day => {
-            day.exercises.forEach(ex => {
-                const completedCount = ex.sets.filter(s => s.completed).length;
-                if (completedCount > 0) {
-                    const group = targetVolumeData.find(v => v.muscleGroup.toLowerCase() === ex.targetMuscle.toLowerCase() || ex.targetMuscle.includes(v.muscleGroup));
-                    if (group) {
-                        group.currentSets += completedCount;
-                    } else {
-                        // Some edge cases like 'Piept sus' map to 'Piept'
-                        if (ex.targetMuscle.includes('Piept')) {
-                            const chest = targetVolumeData.find(v => v.muscleGroup === 'Piept');
-                            if (chest) chest.currentSets += completedCount;
-                        }
-                        if (ex.targetMuscle.includes('Delt. Lat.')) {
-                            const lat = targetVolumeData.find(v => v.muscleGroup === 'Umeri (lateral)');
-                            if (lat) lat.currentSets += completedCount;
-                        }
-                        if (ex.targetMuscle.includes('Delt. Post.')) {
-                            const post = targetVolumeData.find(v => v.muscleGroup === 'Umeri (posterior)');
-                            if (post) post.currentSets += completedCount;
-                        }
-                        if (ex.targetMuscle.includes('Spate/Post.')) {
-                            const back = targetVolumeData.find(v => v.muscleGroup === 'Spate');
-                            if (back) back.currentSets += completedCount;
+        // Calculate based on ticked boxes in checkedSets cache
+        Object.keys(checkedSets).forEach(key => {
+            if (checkedSets[key]) {
+                const parts = key.split('-');
+                if (parts.length === 3) {
+                    const dIdx = parseInt(parts[0], 10);
+                    const eIdx = parseInt(parts[1], 10);
+                    const ex = workoutDays[dIdx]?.exercises[eIdx];
+
+                    if (ex) {
+                        const group = targetVolumeData.find(v => v.muscleGroup.toLowerCase() === ex.targetMuscle.toLowerCase() || ex.targetMuscle.includes(v.muscleGroup));
+                        if (group) {
+                            group.currentSets++;
+                        } else {
+                            if (ex.targetMuscle.includes('Piept')) {
+                                const chest = targetVolumeData.find(v => v.muscleGroup === 'Piept');
+                                if (chest) chest.currentSets++;
+                            }
+                            if (ex.targetMuscle.includes('Delt. Lat.')) {
+                                const lat = targetVolumeData.find(v => v.muscleGroup === 'Umeri (lateral)');
+                                if (lat) lat.currentSets++;
+                            }
+                            if (ex.targetMuscle.includes('Delt. Post.')) {
+                                const post = targetVolumeData.find(v => v.muscleGroup === 'Umeri (posterior)');
+                                if (post) post.currentSets++;
+                            }
+                            if (ex.targetMuscle.includes('Spate/Post.')) {
+                                const back = targetVolumeData.find(v => v.muscleGroup === 'Spate');
+                                if (back) back.currentSets++;
+                            }
                         }
                     }
                 }
-            });
+            }
         });
 
         return targetVolumeData;
-    }, [workouts]);
+    }, [checkedSets]);
 
     const renderItem = useCallback(({ item, index }: ListRenderItemInfo<VolumeData>) => (
         <VolumeBar
